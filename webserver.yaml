@@ -1,0 +1,41 @@
+- hosts: web
+  vars:
+    - image_name: httpd
+    - file: home.html
+    - docker_volume: /webpage/
+    - docker_host_port: 8080
+    - docker_container_port: 80
+  tasks:
+    - name: Add Yum Repo
+      yum_repository:
+        name: docker
+        description: Docker Yum Repo
+        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+        gpgcheck: no
+    - name: Install Docker-CE
+      command: yum install -y  docker-ce --nobest
+    - name: start docker services
+      service:
+        name: "docker"
+        state: started
+        enabled: yes
+    - name: Install Docker Requirement On Host
+      command: pip3 install docker-py
+    - name: pull an image
+      docker_image:
+        name: "{{ image_name }}"
+        source: pull
+    - name: Copy HTML code to Hosts
+      template:
+        src: "{{ file }}"
+        dest: "{{ docker_volume }}"
+    - name: Run docker container
+      docker_container:
+        name: webserver
+        image: "{{ image_name }}"
+        interactive: yes
+        volumes: 
+          - "{{ docker_volume }}:/usr/local/apache2/htdocs"
+        ports:
+          - "{{ docker_host_port }}:{{ docker_container_port }}"
+        command: httpd -D FOREGROUND
